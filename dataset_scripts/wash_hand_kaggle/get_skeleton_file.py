@@ -2,6 +2,7 @@
 import cv2
 import mediapipe as mp
 import numpy as np
+import os
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_hands = mp.solutions.hands
@@ -46,46 +47,34 @@ def process_output_skelenton_to_array(results):
     return out
 
 # For static images:
-IMAGE_FILES = []
-with mp_hands.Hands(
-    static_image_mode=True,
-    max_num_hands=2,
-    min_detection_confidence=0.5) as hands:
-  
-    # For webcam input:
-    cap = cv2.VideoCapture(0)
-    with mp_hands.Hands(
-        model_complexity=0,
-        min_detection_confidence=0.5,
-        min_tracking_confidence=0.5) as hands:
-      while cap.isOpened():
-        success, image = cap.read()
-        if not success:
-          print("Ignoring empty camera frame.")
-          # If loading a video, use 'break' instead of 'continue'.
-          continue
-    
-        # To improve performance, optionally mark the image as not writeable to
-        # pass by reference.
-        image.flags.writeable = False
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        results = hands.process(image)
-    
-        # Draw the hand annotations on the image.
-        image.flags.writeable = True
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        if results.multi_hand_landmarks:
-          for hand_landmarks in results.multi_hand_landmarks:
-            mp_drawing.draw_landmarks(
-                image,
-                hand_landmarks,
-                mp_hands.HAND_CONNECTIONS,
-                mp_drawing_styles.get_default_hand_landmarks_style(),
-                mp_drawing_styles.get_default_hand_connections_style())
-        # Flip the image horizontally for a selfie-view display.
-        cv2.imshow('MediaPipe Hands', cv2.flip(image, 1))
-        if cv2.waitKey(5) & 0xFF == 27:
-          break
-    cap.release()
-    
-    
+with mp_hands.Hands(model_complexity=0,min_detection_confidence=0.5,min_tracking_confidence=0.5) as hands:
+    path_data='/media/liang/ssd2/wash_hand_3/Domain-and-View-point-Agnostic-Hand-Action-Recognition-main/datasets/'
+    for action in os.listdir(path_data+'HandWashDataset/'):
+        for video in os.listdir(path_data+'HandWashDataset/'+action):
+            # For webcam input:
+            cap = cv2.VideoCapture(path_data+'HandWashDataset/'+action+'/'+video)
+            video_name=video.split('.')[0]
+            subject=video_name.split('_')[4]
+            if not os.path.exists(path_data+'handwash/handwashkaggel/'+subject+'/'+video_name+'/'):
+                os.makedirs(path_data+'handwash/handwashkaggel/'+subject+'/'+video_name+'/')
+            f=open(path_data+'handwash/handwashkaggel/'+subject+'/'+video_name+'/joint.txt','w')
+            while cap.isOpened():
+                success, image = cap.read()
+                if not success:
+                  print("Ignoring empty camera frame.")
+                  # If loading a video, use 'break' instead of 'continue'.
+                  break
+            
+                # To improve performance, optionally mark the image as not writeable to
+                # pass by reference.
+                image.flags.writeable = False
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                results = hands.process(image)
+                skeleton_array=process_output_skelenton_to_array(results)
+                list_skeleton=skeleton_array[63:126].tolist()
+                list_skeleton=list(map(lambda x:str(x),list_skeleton))
+                skeleton_array = ' '.join(list_skeleton)
+                f.write(skeleton_array + '\n')  
+            f.close()
+            cap.release()
+        
