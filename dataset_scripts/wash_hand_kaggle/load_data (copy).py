@@ -9,25 +9,44 @@ Created on Tue Jan 19 12:37:22 2021
 import os
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
+#for hand wash dataset 
 
 
+
+# for media pipe 
 path_dataset = './datasets/MSRA/cvpr15_MSRAHandGestureDB'
-subjects = [ 'P{}'.format(i) for i in range(9)]  
-actions = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'I', 'IP', 'L', 'MP', 'RP', 'T', 'TIP', 'Y']
-joints_inds = { j:i for i,j in enumerate(['wrist', 
-                                          'index_mcp', 'index_pip', 'index_dip', 'index_tip', 
-                                          'middle_mcp', 'middle_pip', 'middle_dip', 'middle_tip', 
-                                          'ring_mcp', 'ring_pip', 'ring_dip', 'ring_tip', 
-                                          'little_mcp', 'little_pip', 'little_dip', 'little_tip', 
-                                          'thumb_mcp', 'thumb_pip', 'thumb_dip', 'thumb_tip'])}
+subjects = [ '{}'.format(i) for i in range(1,51)]  
+actions = ['1', '2', '3', '4', '5', '6']
+joints_inds = { j:i for i,j in enumerate(['WRIST',
+'THUMB_CMC',
+'THUMB_MCP',
+'THUMB_IP',
+'THUMB_TIP',
+'INDEX_FINGER_MCP',
+'INDEX_FINGER_PIP',
+'INDEX_FINGER_DIP',
+'INDEX_FINGER_TIP',
+'MIDDLE_FINGER_MCP',
+'MIDDLE_FINGER_PIP',
+'MIDDLE_FINGER_DIP',
+'MIDDLE_FINGER_TIP',
+'RING_FINGER_MCP',
+'RING_FINGER_PIP',
+'RING_FINGER_DIP',
+'RING_FINGER_TIP',
+'PINKY_MCP',
+'PINKY_PIP',
+'PINKY_DIP',
+'PINKY_TIP'])}
 
-joints_min_inds = [ joints_inds[j] for j in ['wrist', 'middle_mcp', 'thumb_tip', 'index_tip', 'middle_tip', 'ring_tip', 'little_tip']]
-joints_cp_inds = [ joints_inds[j] for j in [ 'wrist' ] +\
-                        ['thumb_pip', 'thumb_dip', 'thumb_tip'] +\
-                        [ '{}_{}'.format(finger, part) for finger in  ['index', 'middle', 'ring', 'little' ] \
-                         for part in ['mcp', 'pip', 'dip', 'tip']] ]
+joints_min_inds = [ joints_inds[j] for j in ['WRIST', 'MIDDLE_FINGER_MCP', 'THUMB_TIP', 'INDEX_FINGER_TIP', 'MIDDLE_FINGER_TIP', 'RING_FINGER_TIP', 'PINKY_TIP']]
+joints_cp_inds = [ joints_inds[j] for j in [ 'WRIST' ] +\
+                        ['THUMB_MCP', 'THUMB_IP', 'THUMB_TIP'] +\
+                        [ '{}_{}'.format(finger, part) for finger in  ['INDEX_FINGER', 'MIDDLE_FINGER', 'RING_FINGER', 'PINKY' ] \
+                         for part in ['MCP', 'PIP', 'DIP', 'TIP']] ]
 
 
+    
 
 # Load skeletons and labels from original annotation files.
 # Transform the joints to the specfied format
@@ -35,7 +54,7 @@ def load_data(data_format = 'common_minimal'):
     total_data = { sbj:{} for sbj in subjects }
     for sbj in subjects:
         for a in actions:
-            with open(os.path.join(path_dataset, sbj, a, 'joint.txt')) as f: skels = f.read().splitlines()[1:]
+            with open(os.path.join(path_dataset, sbj, a, 'joint.txt')) as f: skels = f.read().splitlines()
             skels = np.array([ list(map(float, l.split())) for l in skels ])
             skels = skels.reshape((skels.shape[0], 21, 3))
     
@@ -120,8 +139,8 @@ def get_folds(total_data, n_splits=3):
                                     }  
 
     # 3d PostureNet evaluation
-    train_subjs = [ 'P{}'.format(i) for i in range(2, 9) ]
-    test_subjs = ['P0', 'P1']
+    train_subjs = [ '{}'.format(i) for i in range(2, 51) ]
+    test_subjs = ['0', '1']
     train_indexes = [ ind for sbj in train_subjs for ind, ann in enumerate(actions_anns) if sbj in ann ]
     test_indexes = [ ind for sbj in test_subjs for ind, ann in enumerate(actions_anns) if sbj in ann ]
     folds_posturenet = {

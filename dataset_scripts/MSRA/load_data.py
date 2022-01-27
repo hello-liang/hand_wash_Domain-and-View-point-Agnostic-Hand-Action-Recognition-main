@@ -20,7 +20,7 @@ joints_inds = { j:i for i,j in enumerate(['wrist',
                                           'ring_mcp', 'ring_pip', 'ring_dip', 'ring_tip', 
                                           'little_mcp', 'little_pip', 'little_dip', 'little_tip', 
                                           'thumb_mcp', 'thumb_pip', 'thumb_dip', 'thumb_tip'])}
-
+# so ,five each one have four and add a wrist ,for seven ,select top of five and bottom of middle and a wrist
 joints_min_inds = [ joints_inds[j] for j in ['wrist', 'middle_mcp', 'thumb_tip', 'index_tip', 'middle_tip', 'ring_tip', 'little_tip']]
 joints_cp_inds = [ joints_inds[j] for j in [ 'wrist' ] +\
                         ['thumb_pip', 'thumb_dip', 'thumb_tip'] +\
@@ -35,7 +35,7 @@ def load_data(data_format = 'common_minimal'):
     total_data = { sbj:{} for sbj in subjects }
     for sbj in subjects:
         for a in actions:
-            with open(os.path.join(path_dataset, sbj, a, 'joint.txt')) as f: skels = f.read().splitlines()[1:]
+            with open(os.path.join(path_dataset, sbj, a, 'joint.txt')) as f: skels = f.read().splitlines()[1:] # here need to remove[1:]
             skels = np.array([ list(map(float, l.split())) for l in skels ])
             skels = skels.reshape((skels.shape[0], 21, 3))
     

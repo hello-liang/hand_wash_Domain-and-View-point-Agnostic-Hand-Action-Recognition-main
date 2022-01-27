@@ -128,21 +128,6 @@ def evaluate_folds(folds_data, embs, total_labels, num_augmentations=0, embs_aug
 # F-PHAB
 # =============================================================================
 
-def load_fphab_data():
-    # Load all annotations
-    annotations_store_folder = './dataset_scripts/F_PHAB/paper_tables_annotations'
-    with open(os.path.join(annotations_store_folder, 'total_annotations_jn{}.txt'.format(20)), 'r') as f: 
-        total_annotations = f.read().splitlines()
-    total_labels = np.stack([ l.split()[-1] for l in total_annotations ])
-    total_annotations = [ l.split()[0] for l in total_annotations ]
-    
-    
-    # Load evaluation folds
-    folds_1_1 = pickle.load(open(os.path.join(annotations_store_folder, 'annotations_table_2_cross-action_folds_1_1_jn{}.pckl'.format(20)), 'rb'))
-    folds_base = pickle.load(open(os.path.join(annotations_store_folder, 'annotations_table_2_cross-action_folds_jn{}.pckl'.format(20)), 'rb'))
-    folds_subject = pickle.load(open(os.path.join(annotations_store_folder, 'annotations_table_2_cross-person_folds_jn{}.pckl'.format(20)), 'rb'))
-    return total_annotations, total_labels, folds_1_1, folds_base, folds_subject
-
 
 from joblib import Parallel, delayed
 
@@ -206,21 +191,6 @@ def get_tcn_embeddings(model, action_sequences, action_sequences_augmented, retu
     return embs, embs_aug
 
 
-def evaluate_fphab(aug_loop, folds_base, folds_1_1, folds_subject, embs, embs_aug, total_labels, knn_neighbors):
-    total_res = {}
-    for n_aug in aug_loop:
-        total_res[n_aug] = {}
-        print(n_aug, '1:3')
-        total_res[n_aug]['1:3'] = evaluate_folds(folds_base, embs, total_labels, num_augmentations=n_aug, embs_aug=embs_aug, leave_one_out=False)
-        print(n_aug, '1:1')
-        total_res[n_aug]['1:1'] = evaluate_folds(folds_1_1, embs, total_labels, num_augmentations=n_aug, embs_aug=embs_aug, leave_one_out=False, evaluate_all_folds=False)
-        print(n_aug, '3:1')
-        total_res[n_aug]['3:1'] = evaluate_folds(folds_base, embs, total_labels, num_augmentations=n_aug, embs_aug=embs_aug, leave_one_out=True)
-        print(n_aug, 'cross_sub')
-        total_res[n_aug]['cross_sub'] = evaluate_folds(folds_subject, embs, total_labels, num_augmentations=n_aug, embs_aug=embs_aug, leave_one_out=True)
-
-    return total_res
-
 
 def print_results(dataset_name, total_res, knn_neighbors, aug_loop, frame=True):
     if frame: print('-'*81)
@@ -236,57 +206,6 @@ def print_results(dataset_name, total_res, knn_neighbors, aug_loop, frame=True):
 # =============================================================================
 # SHREC 14/28
 # =============================================================================
-
-def load_shrec_data():
-    base_path = './'
-    shrec_train_anns = './dataset_scripts/common_pose/annotations/SHREC2017/annotations_train_{}_jn{}.txt'.format('14', 20)
-    shrec_val_anns = './dataset_scripts/common_pose/annotations/SHREC2017/annotations_val_{}_jn{}.txt'.format('14', 20)
-    with open(os.path.join(base_path+shrec_train_anns), 'r') as f: shrec_train_anns = f.read().splitlines()
-    with open(os.path.join(base_path+shrec_val_anns), 'r') as f: shrec_val_anns = f.read().splitlines()
-    
-    # Load data annotations
-    total_shrec_anns = shrec_train_anns + shrec_val_anns
-    shrec_train_indexes = [ total_shrec_anns.index(ann) for ann in shrec_train_anns ]
-    shrec_val_indexes = [ total_shrec_anns.index(ann) for ann in shrec_val_anns ]
-    total_shrec_anns = np.stack([ l.split()[0] for l in total_shrec_anns ])
-
-    # Create data folds
-    shrec_train_anns = './dataset_scripts/common_pose/annotations/SHREC2017/annotations_train_{}_jn{}.txt'.format('14', 20)
-    shrec_val_anns = './dataset_scripts/common_pose/annotations/SHREC2017/annotations_val_{}_jn{}.txt'.format('14', 20)
-    with open(os.path.join(base_path+shrec_train_anns), 'r') as f: shrec_train_anns = f.read().splitlines()
-    with open(os.path.join(base_path+shrec_val_anns), 'r') as f: shrec_val_anns = f.read().splitlines()
-    total_shrec_labels_14 = np.stack([ l.split()[-1] for l in shrec_train_anns+shrec_val_anns ])
-
-    shrec_folds_14 = {
-        0:{'indexes': shrec_train_indexes, 'annotations': total_shrec_anns[shrec_train_indexes], 'labels': total_shrec_labels_14[shrec_train_indexes]},
-        1:{'indexes': shrec_val_indexes, 'annotations': total_shrec_anns[shrec_val_indexes], 'labels': total_shrec_labels_14[shrec_val_indexes]},
-                   }
-    
-    # Create data folds
-    shrec_train_anns = './dataset_scripts/common_pose/annotations/SHREC2017/annotations_train_{}_jn{}.txt'.format('28', 20)
-    shrec_val_anns = './dataset_scripts/common_pose/annotations/SHREC2017/annotations_val_{}_jn{}.txt'.format('28', 20)
-    with open(os.path.join(base_path+shrec_train_anns), 'r') as f: shrec_train_anns = f.read().splitlines()
-    with open(os.path.join(base_path+shrec_val_anns), 'r') as f: shrec_val_anns = f.read().splitlines()
-    total_shrec_labels_28 = np.stack([ l.split()[-1] for l in shrec_train_anns+shrec_val_anns ])
-
-    shrec_folds_28 = {
-        0:{'indexes': shrec_train_indexes, 'annotations': total_shrec_anns[shrec_train_indexes], 'labels': total_shrec_labels_28[shrec_train_indexes]},
-        1:{'indexes': shrec_val_indexes, 'annotations': total_shrec_anns[shrec_val_indexes], 'labels': total_shrec_labels_28[shrec_val_indexes]},
-                   }
-    
-    return total_shrec_anns, shrec_folds_14, shrec_folds_28, total_shrec_labels_14, total_shrec_labels_28
- 
-
-def evaluate_shrec(aug_loop, shrec_folds_14, shrec_folds_28, embs, embs_aug, total_shrec_labels_14, total_shrec_labels_28, knn_neighbors):
-    total_res_shrec = {}
-    for n_aug in aug_loop:
-        print('***', n_aug, '***')
-        total_res_shrec[n_aug] = {}
-        print(n_aug, '14')
-        total_res_shrec[n_aug]['14'] = evaluate_folds(shrec_folds_14, embs, total_shrec_labels_14, num_augmentations=n_aug, embs_aug=embs_aug, leave_one_out=False, evaluate_all_folds=False)
-        print(n_aug, '28')
-        total_res_shrec[n_aug]['28'] = evaluate_folds(shrec_folds_28, embs, total_shrec_labels_28, num_augmentations=n_aug, embs_aug=embs_aug, leave_one_out=False, evaluate_all_folds=False)
-    return total_res_shrec
 
 
 # %%
@@ -358,33 +277,9 @@ if __name__ == '__main__':
     
     
 
-    # %%
+
     
-    # F-PHAB
-    if args.eval_fphab:
-        t = time.time()
-        total_annotations, total_labels, folds_1_1, folds_base, folds_subject = load_fphab_data()
-        action_sequences, action_sequences_augmented = load_actions_sequences_data_gen(total_annotations, num_augmentations, model_params)
-        embs, embs_aug = get_tcn_embeddings(model, action_sequences, action_sequences_augmented)
-        total_res_fphab = evaluate_fphab(aug_loop, folds_base, folds_1_1, folds_subject, embs, embs_aug, total_labels, knn_neighbors)
-        print_results('F-PHAB   ', total_res_fphab, knn_neighbors, aug_loop)
-        print('Time elapsed: {:.2f}'.format((time.time()-t)/60))
-        del embs; del embs_aug; del action_sequences; del action_sequences_augmented;
-    
-    # %%
-    
-    # SHREC
-    if args.eval_shrec:
-        t = time.time()
-        total_shrec_annotations, shrec_folds_14, shrec_folds_28, total_shrec_labels_14, total_shrec_labels_28 = load_shrec_data()
-        action_sequences, action_sequences_augmented = load_actions_sequences_data_gen(total_shrec_annotations, num_augmentations, model_params)
-        embs, embs_aug = get_tcn_embeddings(model, action_sequences, action_sequences_augmented)
-        total_res_shrec = evaluate_shrec(aug_loop, shrec_folds_14, shrec_folds_28, embs, embs_aug, total_shrec_labels_14, total_shrec_labels_28, knn_neighbors)
-        print_results('SHREC    ', total_res_shrec, knn_neighbors, aug_loop)
-        print('Time elapsed: {:.2f}'.format((time.time()-t)/60))
-        
-        del embs; del embs_aug; del action_sequences; del action_sequences_augmented;
-    
+
     
     
     # %%
@@ -409,18 +304,7 @@ if __name__ == '__main__':
         del embs; del embs_aug; del action_sequences; del action_sequences_augmented;
 
 
-    # %%
-    
-    print('='*80)
-    print('='*80)
-    print('='*80)
-    print('='*80)
-    if args.eval_fphab: print_results('F-PHAB   ', total_res_fphab, knn_neighbors, aug_loop, frame=False)
-    if args.eval_shrec: print_results('SHREC    ', total_res_shrec, knn_neighbors, aug_loop, frame=False)
-    if args.eval_msra: print_results( 'MSRA     ', total_res_msra_full, knn_neighbors, aug_loop, frame=False)
-    
-    print()
-    print(args.loss_name, args.path_model)
+
     
 # %%
 
