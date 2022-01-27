@@ -25,7 +25,9 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 knn_neighbors = [1,3,5,7,9,11]
 # aug_loop = [0,10,20,40]
-aug_loop = [0,40]
+#aug_loop = [0,40]
+aug_loop = [0,5]
+
 num_augmentations = max(aug_loop)
 weights = 'distance'
 
@@ -121,16 +123,75 @@ def evaluate_folds(folds_data, embs, total_labels, num_augmentations=0, embs_aug
 
 
 
-
-# %%
-
-# =============================================================================
-# F-PHAB
-# =============================================================================
-
-
 from joblib import Parallel, delayed
 
+
+
+
+def print_results(dataset_name, total_res, knn_neighbors, aug_loop, frame=True):
+    if frame: print('-'*81)
+    print('# | {} | {}'.format(dataset_name,
+            ' | '.join([ '[{}] {:.1f} / {:.1f}'.format(k, max([ total_res[0][k][n] for n in knn_neighbors ])*100,
+              max([ total_res[na][k][n] for n in knn_neighbors for na in aug_loop ])*100) for k in total_res[0].keys() ])
+        ))
+    if frame: print('-'*81)
+    
+
+
+
+
+if __name__ == '__main__':
+    # %%
+
+    # =============================================================================
+    # Load model
+    # =============================================================================
+    
+    import os
+    # os.environ['CUDA_VISIBLE_DEVICES'] = ''
+
+    import prediction_utils
+    import time
+    
+    import argparse
+    parser = argparse.ArgumentParser(description='Evaluate action recognition in different datasets')
+    parser.add_argument('--path_model', type=str, help='path to the trained model',default="./pretrained_models/xdom_summarization")
+    parser.add_argument('--loss_name', type=str, help='key to load weights',default="mixknn_best")
+    parser.add_argument('--eval_fphab', action='store_true', help='evaluate on F-PHAB splits')
+    parser.add_argument('--eval_shrec', action='store_true', help='evaluate on SHREC splits')
+    parser.add_argument('--eval_msra', action='store_true', help='evaluate on MSRA dataset')
+    args = parser.parse_args()
+
+    model, model_params = prediction_utils.load_model(args.path_model, False, loss_name = args.loss_name)
+    model_params['use_rotations'] = None
+    
+    print('* Model loaded')
+    
+    
+
+
+
+
+t = time.time()
+model_params['skip_frames'] = [1] #this one is only skip one image ,default is skip 3 image.
+
+
+def load_MSRA_data(model_params, n_splits=4, seq_perc=1, data_format = 'common_minimal'):
+    from dataset_scripts.MSRA import load_data
+    np.random.seed(0)
+    if seq_perc == -1: total_data = load_data.actions_to_samples(load_data.load_data(data_format), -1)
+    else: total_data = load_data.actions_to_samples(load_data.load_data(data_format), int(abs(model_params['max_seq_len']*model_params['skip_frames'][0]*seq_perc)))
+    actions_list, actions_labels, actions_label_sbj, folds, folds_subject, folds_subject_splits, folds_posturenet = \
+        load_data.get_folds(total_data, n_splits=n_splits)
+    return actions_list, actions_labels, actions_label_sbj, folds, folds_subject, folds_subject_splits, folds_posturenet
+
+actions_list, actions_labels, actions_label_sbj, folds, folds_subject, folds_subject_splits, folds_posturenet = \
+                                    load_MSRA_data(model_params, n_splits=4, 
+                                                               # seq_perc=0.2, data_format=model_params['joints_format'])
+                                                                seq_perc=-1, data_format=model_params['joints_format'])
+                                    
+                              
+                              
 def load_actions_sequences_data_gen(total_annotations, num_augmentations, model_params, load_from_files=True, return_sequences=False):
     np.random.seed(0)
     data_gen = DataGenerator(**model_params)
@@ -152,7 +213,10 @@ def load_actions_sequences_data_gen(total_annotations, num_augmentations, model_
         print('* Data sequences augmented')
     else: action_sequences_augmented = None
     
-    return action_sequences, action_sequences_augmented
+    return action_sequences, action_sequences_augmented    
+                          
+action_sequences, action_sequences_augmented = load_actions_sequences_data_gen(actions_list, num_augmentations, model_params, 
+                                                                   load_from_files=False, return_sequences=True)
 
 
 
@@ -190,38 +254,9 @@ def get_tcn_embeddings(model, action_sequences, action_sequences_augmented, retu
  
     return embs, embs_aug
 
+embs, embs_aug = get_tcn_embeddings(model, action_sequences, action_sequences_augmented, return_sequences=True)
 
 
-def print_results(dataset_name, total_res, knn_neighbors, aug_loop, frame=True):
-    if frame: print('-'*81)
-    print('# | {} | {}'.format(dataset_name,
-            ' | '.join([ '[{}] {:.1f} / {:.1f}'.format(k, max([ total_res[0][k][n] for n in knn_neighbors ])*100,
-              max([ total_res[na][k][n] for n in knn_neighbors for na in aug_loop ])*100) for k in total_res[0].keys() ])
-        ))
-    if frame: print('-'*81)
-    
-    
-# %%
-
-# =============================================================================
-# SHREC 14/28
-# =============================================================================
-
-
-# %%
-
-# =============================================================================
-# MSRA functions
-# =============================================================================
-
-def load_MSRA_data(model_params, n_splits=4, seq_perc=1, data_format = 'common_minimal'):
-    from dataset_scripts.MSRA import load_data
-    np.random.seed(0)
-    if seq_perc == -1: total_data = load_data.actions_to_samples(load_data.load_data(data_format), -1)
-    else: total_data = load_data.actions_to_samples(load_data.load_data(data_format), int(abs(model_params['max_seq_len']*model_params['skip_frames'][0]*seq_perc)))
-    actions_list, actions_labels, actions_label_sbj, folds, folds_subject, folds_subject_splits, folds_posturenet = \
-        load_data.get_folds(total_data, n_splits=n_splits)
-    return actions_list, actions_labels, actions_label_sbj, folds, folds_subject, folds_subject_splits, folds_posturenet
 
 def evaluate_MSRA(aug_loop, actions_label_sbj, folds, folds_subject, folds_subject_splits, folds_posturenet, 
                   embs, embs_aug, actions_labels, knn_neighbors, return_sequences=False):
@@ -246,62 +281,15 @@ def evaluate_MSRA(aug_loop, actions_label_sbj, folds, folds_subject, folds_subje
 
 
 
-# %%
-
-if __name__ == '__main__':
-    # %%
-
-    # =============================================================================
-    # Load model
-    # =============================================================================
-    
-    import os
-    # os.environ['CUDA_VISIBLE_DEVICES'] = ''
-
-    import prediction_utils
-    import time
-    
-    import argparse
-    parser = argparse.ArgumentParser(description='Evaluate action recognition in different datasets')
-    parser.add_argument('--path_model', type=str, help='path to the trained model',default="./pretrained_models/xdom_summarization")
-    parser.add_argument('--loss_name', type=str, help='key to load weights',default="mixknn_best")
-    parser.add_argument('--eval_fphab', action='store_true', help='evaluate on F-PHAB splits')
-    parser.add_argument('--eval_shrec', action='store_true', help='evaluate on SHREC splits')
-    parser.add_argument('--eval_msra', action='store_true', help='evaluate on MSRA dataset')
-    args = parser.parse_args()
-
-    model, model_params = prediction_utils.load_model(args.path_model, False, loss_name = args.loss_name)
-    model_params['use_rotations'] = None
-    
-    print('* Model loaded')
-    
-    
+total_res_msra_full = evaluate_MSRA(aug_loop, actions_label_sbj, folds, folds_subject, folds_subject_splits, folds_posturenet,
+                                    embs, embs_aug, actions_labels, knn_neighbors, return_sequences=True)
 
 
-    
 
-    
-    
-    # %%
-    
-    # MSRA full -> return_sequences == True
-#    if args.eval_msra:
-    if 1:
 
-        t = time.time()
-        model_params['skip_frames'] = [1] #this one is only skip one image ,default is skip 3 image.
-        actions_list, actions_labels, actions_label_sbj, folds, folds_subject, folds_subject_splits, folds_posturenet = \
-                                    load_MSRA_data(model_params, n_splits=4, 
-                                                               # seq_perc=0.2, data_format=model_params['joints_format'])
-                                                                seq_perc=-1, data_format=model_params['joints_format'])
-        action_sequences, action_sequences_augmented = load_actions_sequences_data_gen(actions_list, num_augmentations, model_params, 
-                                                                           load_from_files=False, return_sequences=True)
-        embs, embs_aug = get_tcn_embeddings(model, action_sequences, action_sequences_augmented, return_sequences=True)
-        total_res_msra_full = evaluate_MSRA(aug_loop, actions_label_sbj, folds, folds_subject, folds_subject_splits, folds_posturenet,
-                                            embs, embs_aug, actions_labels, knn_neighbors, return_sequences=True)
-        print_results('MSRA     ', total_res_msra_full, knn_neighbors, aug_loop)
-        print('Time elapsed: {:.2f}'.format((time.time()-t)/60))
-        del embs; del embs_aug; del action_sequences; del action_sequences_augmented;
+print_results('MSRA     ', total_res_msra_full, knn_neighbors, aug_loop)
+print('Time elapsed: {:.2f}'.format((time.time()-t)/60))
+del embs; del embs_aug; del action_sequences; del action_sequences_augmented;
 
 
 
