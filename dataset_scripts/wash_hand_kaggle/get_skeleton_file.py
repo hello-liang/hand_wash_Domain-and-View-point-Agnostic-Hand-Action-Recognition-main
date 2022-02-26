@@ -57,7 +57,7 @@ with mp_hands.Hands(model_complexity=0,min_detection_confidence=0.5,min_tracking
             cap = cv2.VideoCapture(path_data+'HandWashDataset/'+action+'/'+video)
             video_name=video.split('.')[0]
             subject=video_name[-1]
-            path_joint= path_data+'handwash/handwashkaggel/'+str(v_i)+'/'+action+'/'+video_name+'/'
+            path_joint= path_data+'handwash/handwashkaggel/'+str(v_i)+'/'+action+'/'
             if not os.path.exists(path_joint):
                 os.makedirs(path_joint)
             f=open(path_joint+'joint.txt','w')
@@ -70,7 +70,6 @@ with mp_hands.Hands(model_complexity=0,min_detection_confidence=0.5,min_tracking
             
                 # To improve performance, optionally mark the image as not writeable to
                 # pass by reference.
-                image.flags.writeable = False
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 results = hands.process(image)
                 skeleton_array=process_output_skelenton_to_array(results)

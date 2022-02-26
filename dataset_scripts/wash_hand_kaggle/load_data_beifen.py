@@ -14,9 +14,10 @@ from sklearn.model_selection import StratifiedKFold
 
 
 # for media pipe 
-path_dataset = './datasets/MSRA/cvpr15_MSRAHandGestureDB'
+
+path_dataset = './datasets/handwash/handwashkaggel'
 subjects = [ '{}'.format(i) for i in range(1,51)]  
-actions = ['1', '2', '3', '4', '5', '6']
+actions = ['Step_1', 'Step_2', 'Step_3', 'Step_4', 'Step_5', 'Step_6']
 joints_inds = { j:i for i,j in enumerate(['WRIST',
 'THUMB_CMC',
 'THUMB_MCP',
@@ -56,6 +57,8 @@ def load_data(data_format = 'common_minimal'):
         for a in actions:
             with open(os.path.join(path_dataset, sbj, a, 'joint.txt')) as f: skels = f.read().splitlines()
             skels = np.array([ list(map(float, l.split())) for l in skels ])
+
+            # remove the zero row ,no matter left or right ?have problem ,because recently only analysis one hand ,so process the skeleton file at first
             skels = skels.reshape((skels.shape[0], 21, 3))
     
             if data_format == 'common_minimal':
